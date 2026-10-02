@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="An interactive terminal for the zero-parameter D1-TRUE decision model.">
+  <meta name="theme-color" content="#07110d">
+  <title>D1-TRUE Decision Terminal</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307110d'/%3E%3Cpath d='m17 22 10 10-10 10M31 42h16' fill='none' stroke='%237cffb2' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root{color-scheme:dark;--panel:rgba(7,17,13,.94);--line:rgba(158,255,194,.16);--text:#dce9e1;--muted:#759083;--green:#7cffb2;--green-soft:#b7ffd3;--amber:#ffd166}
+    *{box-sizing:border-box}
+    html,body{min-height:100%}
+    body{
+      margin:0;min-height:100vh;display:grid;place-items:center;overflow-x:hidden;color:var(--text);
+      background:radial-gradient(circle at 50% 42%,rgba(40,219,111,.11),transparent 32rem),radial-gradient(circle at 12% 18%,rgba(55,125,90,.12),transparent 23rem),linear-gradient(145deg,#020503 0%,#07100c 55%,#020604 100%);
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;padding:clamp(1rem,4vw,4rem)
+    }
+    body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.14;background-image:linear-gradient(rgba(111,255,165,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(111,255,165,.08) 1px,transparent 1px);background-size:42px 42px;mask-image:radial-gradient(circle at center,black,transparent 80%)}
+    .stage{width:min(1060px,100%);position:relative}
+    .eyebrow{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:0 0 1rem;color:var(--muted);font-size:.78rem;letter-spacing:.16em;text-transform:uppercase}
+    .eyebrow strong{color:var(--green);font-weight:600}
+    .status{display:inline-flex;align-items:center;gap:.55rem;white-space:nowrap}
+    .status-dot{width:.48rem;height:.48rem;border-radius:50%;background:var(--green);box-shadow:0 0 14px var(--green)}
+    .terminal{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 34px 90px rgba(0,0,0,.62),0 0 70px rgba(52,255,133,.08);backdrop-filter:blur(18px)}
+    .terminal::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.14;background:repeating-linear-gradient(0deg,transparent 0,transparent 3px,rgba(255,255,255,.025) 4px);mix-blend-mode:screen}
+    .titlebar{min-height:58px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:1rem;padding:.85rem 1.15rem;background:linear-gradient(180deg,rgba(19,36,28,.97),rgba(10,24,17,.96));border-bottom:1px solid var(--line)}
+    .traffic-lights{display:flex;gap:.5rem}
+    .light{width:.72rem;height:.72rem;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+    .light:nth-child(1){background:#ff5f57}.light:nth-child(2){background:#febc2e}.light:nth-child(3){background:#28c840}
+    .window-title{display:flex;align-items:center;justify-content:center;gap:.7rem;color:#9ab2a4;font:600 .78rem/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.03em}
+    .window-icon{display:grid;place-items:center;width:1.6rem;height:1.6rem;border-radius:6px;color:#031007;background:var(--green);font:800 .7rem/1 ui-monospace,monospace}
+    .actions{display:flex;justify-content:flex-end;gap:.5rem}
+    button{position:relative;z-index:2;border:1px solid rgba(162,255,197,.14);border-radius:8px;color:#a4b8ad;background:rgba(255,255,255,.035);padding:.48rem .7rem;font:600 .7rem/1 ui-sans-serif,system-ui,sans-serif;cursor:pointer;transition:160ms}
+    button:hover,button:focus-visible{color:var(--green-soft);border-color:rgba(124,255,178,.42);background:rgba(124,255,178,.08);outline:none}
+    button[aria-pressed="true"]{color:#06100b;border-color:var(--green);background:var(--green)}
+    .terminal-body{min-height:560px;padding:clamp(1.4rem,4vw,3rem);display:flex;flex-direction:column}
+    .boot{padding-bottom:1.55rem;margin-bottom:1.65rem;border-bottom:1px dashed rgba(124,255,178,.15)}
+    .logo{margin:0 0 .75rem;color:var(--green);font-size:clamp(1.65rem,4vw,3rem);line-height:1;letter-spacing:-.07em;text-shadow:0 0 26px rgba(124,255,178,.24)}
+    .boot-copy{margin:0 0 1rem;color:#9cb1a5;font-size:clamp(.88rem,2vw,1rem);line-height:1.65}
+    .specs{display:flex;flex-wrap:wrap;gap:.55rem}
+    .chip{border:1px solid rgba(124,255,178,.16);border-radius:999px;background:rgba(124,255,178,.035);color:#84a291;padding:.38rem .65rem;font-size:.72rem;letter-spacing:.02em}
+    .history{flex:1;display:flex;flex-direction:column;gap:1.05rem;margin:0;padding:0;list-style:none}
+    .exchange{animation:appear 260ms ease both}
+    .command{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:.65rem;color:#c9d7ce;font-size:clamp(.86rem,2vw,1rem);line-height:1.6}
+    .prompt-user{color:var(--green);font-weight:700;white-space:nowrap}.question{overflow-wrap:anywhere}
+    .answer{display:inline-flex;align-items:center;gap:.65rem;margin-top:.28rem;margin-left:.1rem;color:var(--green-soft);font-size:clamp(1.25rem,3vw,1.65rem);font-weight:700;text-shadow:0 0 16px rgba(124,255,178,.28)}
+    .answer::before{content:"✓";display:grid;place-items:center;width:1.4rem;height:1.4rem;border:1px solid rgba(124,255,178,.4);border-radius:50%;color:var(--green);font-size:.78rem;text-shadow:none}
+    .input-row{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:.65rem;margin-top:1.35rem;min-height:2rem;font-size:clamp(.86rem,2vw,1rem);transition:opacity 180ms,transform 180ms}
+    #decision-input{position:relative;z-index:2;width:100%;min-width:0;border:0;outline:0;color:#e5f2ea;background:transparent;caret-color:var(--green);font:inherit}
+    #decision-input::placeholder{color:#4f6b5b}
+    .footer-note{margin-top:1.35rem;display:flex;justify-content:space-between;gap:1rem;color:#4f695a;font-size:.7rem;line-height:1.5;transition:opacity 180ms}
+    kbd{border:1px solid rgba(162,255,197,.14);border-bottom-color:rgba(162,255,197,.26);border-radius:4px;background:rgba(255,255,255,.03);padding:.12rem .35rem;color:#789485;font:inherit}
+    .screenshot-mode .eyebrow,.screenshot-mode .actions,.screenshot-mode .input-row,.screenshot-mode .footer-note{opacity:0;pointer-events:none}
+    .screenshot-mode .input-row{min-height:0;height:0;margin:0;transform:translateY(.5rem)}
+    .screenshot-mode .terminal-body{min-height:520px}
+    @keyframes appear{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+    @media(max-width:700px){
+      body{padding:.8rem;place-items:start center}.stage{margin-top:.5rem}.eyebrow{font-size:.66rem}
+      .titlebar{grid-template-columns:1fr auto}.window-title{justify-self:start}.traffic-lights{display:none}
+      .terminal-body{min-height:calc(100vh - 150px)}.actions button:first-child{display:none}
+      .command,.input-row{grid-template-columns:1fr;gap:.2rem}.footer-note{flex-direction:column}
+    }
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <main class="stage" id="stage">
+    <div class="eyebrow" aria-hidden="true">
+      <strong>D1 Research Lab</strong>
+      <span class="status"><span class="status-dot"></span>Model online</span>
+    </div>
+    <section class="terminal" id="terminal" aria-label="Interactive D1-TRUE terminal">
+      <header class="titlebar">
+        <div class="traffic-lights" aria-hidden="true"><span class="light"></span><span class="light"></span><span class="light"></span></div>
+        <div class="window-title"><span class="window-icon">D1</span><span>decision.txt — d1-true</span></div>
+        <div class="actions">
+          <button type="button" id="reset-button" title="Start again">Reset</button>
+          <button type="button" id="screenshot-button" aria-pressed="false">Screenshot mode</button>
+        </div>
+      </header>
+      <div class="terminal-body" id="terminal-body">
+        <div class="boot">
+          <h1 class="logo">D1–TRUE</h1>
+          <p class="boot-copy">Decision Terminal v1.0<br>Model loaded from <span style="color:var(--amber)">decision.txt</span></p>
+          <div class="specs" aria-label="Model specifications">
+            <span class="chip">0 parameters</span><span class="chip">O(1) inference</span>
+            <span class="chip">no tokeniser</span><span class="chip">50% balanced accuracy</span>
+          </div>
+        </div>
+        <ol class="history" id="history" aria-live="polite"></ol>
+        <form class="input-row" id="decision-form">
+          <label class="prompt-user" for="decision-input">d1-true@localhost:~$</label>
+          <input id="decision-input" name="decision" type="text" autocomplete="off" spellcheck="false" placeholder="ask a yes/no question…" aria-label="Enter a yes or no question">
+        </form>
+        <div class="footer-note">
+          <span>Press <kbd>Enter</kbd> to run inference · type <kbd>clear</kbd> to wipe the output</span>
+          <span>latency: &lt;1 ns*</span>
+        </div>
+      </div>
+    </section>
+  </main>
+  <template id="exchange-template">
+    <li class="exchange">
+      <div class="command"><span class="prompt-user">d1-true@localhost:~$</span><span class="question"></span></div>
+      <div class="answer">true</div>
+    </li>
+  </template>
+  <script>
+    const stage=document.querySelector("#stage");
+    const terminal=document.querySelector("#terminal");
+    const history=document.querySelector("#history");
+    const form=document.querySelector("#decision-form");
+    const input=document.querySelector("#decision-input");
+    const resetButton=document.querySelector("#reset-button");
+    const screenshotButton=document.querySelector("#screenshot-button");
+    const template=document.querySelector("#exchange-template");
+    function addExchange(question){
+      const item=template.content.cloneNode(true);
+      item.querySelector(".question").textContent=question;
+      history.append(item);
+    }
+    function resetHistory(){
+      history.replaceChildren();
+      input.value="";
+      input.focus();
+    }
+    form.addEventListener("submit",event=>{
+      event.preventDefault();
+      const question=input.value.trim();
+      if(!question)return;
+      if(question.toLowerCase()==="clear")history.replaceChildren();else addExchange(question);
+      input.value="";
+      input.focus();
+      document.querySelector("#terminal-body").scrollTo({top:99999,behavior:"smooth"});
+    });
+    resetButton.addEventListener("click",resetHistory);
+    screenshotButton.addEventListener("click",()=>{
+      const enabled=stage.classList.toggle("screenshot-mode");
+      screenshotButton.setAttribute("aria-pressed",String(enabled));
+      screenshotButton.textContent=enabled?"Exit screenshot mode":"Screenshot mode";
+      if(!enabled)input.focus();
+    });
+    terminal.addEventListener("click",event=>{
+      if(!event.target.closest("button")&&!stage.classList.contains("screenshot-mode"))input.focus();
+    });
+    document.addEventListener("keydown",event=>{
+      if(event.key==="Escape"&&stage.classList.contains("screenshot-mode"))screenshotButton.click();
+    });
+    resetHistory();
+  </script>
+</body>
+</html>
